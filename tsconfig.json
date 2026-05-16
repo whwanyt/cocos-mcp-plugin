@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "rootDir": "./source",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    "types": [
+      "node",
+      "@cocos/creator-types/engine",
+      "@cocos/creator-types/editor"
+    ]
+  },
+  "include": ["source/**/*.ts"],
+  "exclude": ["source/test/**/*.ts"]
+}

@@ -1,0 +1,94 @@
+<!-- EN: Dockable Cocos panel template; behavior is wired in source/panels/default/index.ts. -->
+<!-- ZH: Cocos 可停靠面板模板；交互行为在 source/panels/default/index.ts 中绑定。 -->
+<section class="panel-shell">
+  <header class="panel-header">
+    <div class="title-group">
+      <h1>Cocos Plugin Server</h1>
+      <p>Streamable HTTP MCP</p>
+    </div>
+    <span id="statusBadge" class="status-badge">Unknown</span>
+  </header>
+
+  <main class="panel-main">
+    <section class="endpoint-panel">
+      <div class="endpoint-copy">
+        <span class="metric-label">Endpoint</span>
+        <code id="endpointValue">-</code>
+      </div>
+      <button id="copyButton" class="icon-button" title="Copy endpoint" aria-label="Copy endpoint">Copy</button>
+    </section>
+
+    <section class="metric-grid">
+      <div class="metric-item">
+        <span class="metric-label">Exposed</span>
+        <strong id="toolsValue">0</strong>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Catalog</span>
+        <strong id="catalogValue">0</strong>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Dangerous</span>
+        <strong id="dangerousValue">0</strong>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Partial</span>
+        <strong id="partialValue">0</strong>
+      </div>
+    </section>
+
+    <section class="profile-panel">
+      <div class="profile-row">
+        <span class="metric-label">Profile</span>
+        <div class="segmented-control">
+          <button id="coreProfileButton" class="segment-button" data-profile="core">Core</button>
+          <button id="fullProfileButton" class="segment-button" data-profile="full">Full</button>
+        </div>
+      </div>
+      <label class="toggle-row">
+        <span>Dangerous Tools</span>
+        <input id="dangerousToggle" type="checkbox" />
+      </label>
+      <button id="applyExposureButton" class="primary-button">Apply &amp; Restart</button>
+    </section>
+
+    <section class="action-row">
+      <button id="startButton" class="primary-button">Start</button>
+      <button id="stopButton" class="danger-button" hidden>Stop</button>
+      <button id="refreshButton" class="secondary-button">Refresh</button>
+    </section>
+
+    <section class="tool-section">
+      <div class="section-title">
+        <h2>Registered Tools</h2>
+        <span id="toolSummary">-</span>
+      </div>
+      <div class="filter-row">
+        <select id="profileFilter">
+          <option value="all">All profiles</option>
+          <option value="core">Core</option>
+          <option value="full">Full</option>
+          <option value="internal">Internal</option>
+        </select>
+        <select id="riskFilter">
+          <option value="all">All risks</option>
+          <option value="safe">Safe</option>
+          <option value="write">Write</option>
+          <option value="destructive">Destructive</option>
+          <option value="exec">Exec</option>
+          <option value="environment">Environment</option>
+          <option value="internal">Internal</option>
+        </select>
+        <select id="statusFilter">
+          <option value="all">All status</option>
+          <option value="implemented">Implemented</option>
+          <option value="partial">Partial</option>
+          <option value="unavailable">Unavailable</option>
+        </select>
+      </div>
+      <div id="toolsList" class="tools-list"></div>
+    </section>
+
+    <p id="messageLine" class="message-line"></p>
+  </main>
+</section>
