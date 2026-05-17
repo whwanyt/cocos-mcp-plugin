@@ -19,11 +19,7 @@ export function createNodeTools(): ToolModule {
         components: arrayProp('Component type names'),
         unlinkPrefab: booleanProp('Unlink prefab after creation', { default: false }),
         keepWorldTransform: booleanProp('Keep world transform', { default: false }),
-        initialTransform: {
-          type: 'object',
-          description: 'Initial transform object',
-          properties: transformSchema(),
-        },
+        initialTransform: objectSchema(transformSchema(), [], 'Initial transform object'),
       }, ['name']),
       handler: async (args, context) => {
         const options: Record<string, unknown> = {

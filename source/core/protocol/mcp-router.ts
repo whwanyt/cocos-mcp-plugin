@@ -103,10 +103,32 @@ export class McpRequestRouter {
     if (!this.registry.has(name)) {
       throw new Error(`Unknown tool: ${name}`);
     }
+    if (rawArgs !== undefined && (!rawArgs || typeof rawArgs !== 'object' || Array.isArray(rawArgs))) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: false,
+              error: 'Tool arguments validation failed',
+              data: {
+                name,
+                issues: [{
+                  path: '<root>',
+                  message: 'tools/call params.arguments must be a JSON object when provided',
+                  code: 'invalid_type',
+                }],
+              },
+            }, null, 2),
+          },
+        ],
+        isError: true,
+      };
+    }
 
     // EN: MCP clients may omit arguments; handlers always receive a plain object.
     // ZH: MCP 客户端可以省略 arguments；handler 始终接收普通对象。
-    const args = rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? rawArgs as JsonObject : {};
+    const args = rawArgs ? rawArgs as JsonObject : {};
     const result = await this.registry.execute(name, args, {
       ...this.context,
       exposure: this.registry.getExposureRuntime(),

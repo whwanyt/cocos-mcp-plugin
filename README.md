@@ -183,7 +183,7 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture guide
 
 1. Add the tool spec in the relevant `source/tools/*-tools.ts` file.
 2. Use snake_case for the local tool name; the exposed MCP name is `namespace_toolName`.
-3. Keep `inputSchema` as a JSON object schema.
+3. Declare `inputSchema` with the toolkit helpers; they keep MCP JSON Schema output and attach hidden Zod validation.
 4. Call Cocos only through `context.editor`.
 5. Confirm `risk`, `profile`, and `destructive` metadata.
 6. Update `EXPECTED_TOOL_COUNT` in `source/tools/index.ts`.

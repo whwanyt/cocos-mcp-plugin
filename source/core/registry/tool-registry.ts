@@ -12,6 +12,7 @@ import {
   ToolModule,
   ToolResponse,
 } from '../../types';
+import { validateToolInput } from './tool-schema-validator';
 
 interface RegisteredTool {
   definition: ToolDefinition;
@@ -149,7 +150,22 @@ export class ToolRegistry {
       };
     }
 
-    return item.handler(args, context);
+    const validation = validateToolInput(item.definition.inputSchema, args);
+    if (!validation.success) {
+      // EN: Argument errors are returned as tool failures so MCP clients get field-level diagnostics.
+      // ZH: 参数错误作为工具失败返回，让 MCP 客户端获得字段级诊断信息。
+      return {
+        success: false,
+        status: item.definition.status,
+        error: 'Tool arguments validation failed',
+        data: {
+          name,
+          issues: validation.issues,
+        },
+      };
+    }
+
+    return item.handler(validation.data, context);
   }
 
   private fullName(namespace: string, toolName: string): string {

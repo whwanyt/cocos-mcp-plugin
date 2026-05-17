@@ -8,6 +8,7 @@ import {
   ToolRisk,
   ToolStatus,
 } from '../types';
+import { attachInputValidator, zodFromJsonSchema } from '../core/registry/tool-schema-validator';
 
 export interface ToolSpec {
   name: string;
@@ -48,50 +49,61 @@ export function createToolModule(namespace: string, specs: ToolSpec[]): ToolModu
   };
 }
 
-export function objectSchema(properties: Record<string, JsonObject> = {}, required: string[] = []): JsonObject {
-  return {
+export function objectSchema(
+  properties: Record<string, JsonObject> = {},
+  required: string[] = [],
+  description?: string,
+): JsonObject {
+  const schema: JsonObject = {
     type: 'object',
+    ...(description ? { description } : {}),
     properties,
     ...(required.length > 0 ? { required } : {}),
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function stringProp(description: string, extra: JsonObject = {}): JsonObject {
-  return {
+  const schema: JsonObject = {
     type: 'string',
     description,
     ...extra,
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function numberProp(description: string, extra: JsonObject = {}): JsonObject {
-  return {
+  const schema: JsonObject = {
     type: 'number',
     description,
     ...extra,
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function booleanProp(description: string, extra: JsonObject = {}): JsonObject {
-  return {
+  const schema: JsonObject = {
     type: 'boolean',
     description,
     ...extra,
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function arrayProp(description: string, items: JsonObject = { type: 'string' }): JsonObject {
-  return {
+  const schema: JsonObject = {
     type: 'array',
     items,
     description,
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function anyProp(description: string): JsonObject {
-  return {
+  const schema: JsonObject = {
     description,
   };
+  return attachInputValidator(schema, zodFromJsonSchema(schema));
 }
 
 export function unsupported(message: string, data?: unknown): ToolResponse {

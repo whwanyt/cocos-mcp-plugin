@@ -162,7 +162,8 @@ Responsibilities:
 - Register explicit `ToolModule` instances.
 - Keep the full tool catalog.
 - Generate the MCP-visible tool list from the active exposure profile.
-- Validate unique tool names, JSON-serializable schemas, and complete handlers.
+- Validate unique tool names, JSON-serializable schemas, hidden Zod validators, and complete handlers.
+- Validate tool arguments before executing handlers.
 - Execute tool handlers.
 
 Rules:
@@ -260,7 +261,7 @@ Rules:
 - Incomplete tools must be marked `partial` or `unavailable`.
 - Do not return fake success.
 - Handlers return `ToolResponse`; use `ok(...)` for success.
-- Schemas must be JSON object schemas.
+- Tool schemas must be declared through toolkit helpers so MCP receives JSON Schema while the registry validates with Zod.
 - Tool names use snake_case.
 - Use `transform-utils.ts` for node and prefab transform normalization.
 - 2D node positions may accept `{ x, y }`; tools must add `z: 0` before writing Cocos `cc.Node.position`.
@@ -409,7 +410,7 @@ When adding a tool:
 
 1. Add the spec to the relevant `source/tools/*-tools.ts`.
 2. Use snake_case for the local tool name.
-3. Keep the schema as a JSON object schema.
+3. Declare the schema with toolkit helpers so it stays MCP-compatible JSON Schema and gets Zod runtime validation.
 4. Call Cocos through `context.editor`.
 5. Confirm `status`, `risk`, `profile`, and `destructive`.
 6. Update `EXPECTED_TOOL_COUNT`.

@@ -50,7 +50,7 @@
 
 1. 在对应 `source/tools/*-tools.ts` 中添加 tool spec。
 2. 工具名使用 snake_case，最终暴露名由 `namespace_toolName` 组成。
-3. schema 必须是 JSON object schema。
+3. 使用 toolkit helper 声明 schema，确保它对 MCP 仍是 JSON Schema，同时带隐藏 Zod 校验。
 4. handler 只通过 `context.editor` 调用 Cocos 能力。
 5. 更新 `source/tools/index.ts` 中的 `EXPECTED_TOOL_COUNT`。
 6. 确认 `risk`、`profile`、`destructive` 元数据正确；没有显式配置时会由 `toolkit` 自动推断。

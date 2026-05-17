@@ -1,4 +1,5 @@
 import { EditorComponentDump, EditorNodeDump, JsonObject } from '../types';
+import { numberProp, objectSchema } from './toolkit';
 
 export interface NormalizedVec3 extends JsonObject {
   x: number;
@@ -62,7 +63,7 @@ export function normalizeVec3(value: unknown, label: string, options: { allow2D:
   return { x, y, z };
 }
 
-export function transformSchema(): JsonObject {
+export function transformSchema(): Record<string, JsonObject> {
   const vector = objectVectorSchema('Vector object. 2D nodes may omit z for position.');
   return {
     position: vector,
@@ -84,16 +85,11 @@ export function applyTransformToOptions(options: Record<string, unknown>, transf
 }
 
 function objectVectorSchema(description: string): JsonObject {
-  return {
-    type: 'object',
-    description,
-    properties: {
-      x: { type: 'number' },
-      y: { type: 'number' },
-      z: { type: 'number' },
-    },
-    required: ['x', 'y'],
-  };
+  return objectSchema({
+    x: numberProp('X value'),
+    y: numberProp('Y value'),
+    z: numberProp('Z value'),
+  }, ['x', 'y'], description);
 }
 
 function toFiniteNumber(value: unknown, label: string): number {

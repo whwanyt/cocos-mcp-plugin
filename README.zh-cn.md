@@ -183,7 +183,7 @@ source/scene.ts
 
 1. 在对应 `source/tools/*-tools.ts` 中添加 tool spec。
 2. 工具名使用 snake_case，最终 MCP 暴露名为 `namespace_toolName`。
-3. `inputSchema` 必须是 JSON object schema。
+3. 使用 toolkit helper 声明 `inputSchema`；它们会保留 MCP 对外 JSON Schema，并附加隐藏的 Zod 校验。
 4. handler 只通过 `context.editor` 调用 Cocos 能力。
 5. 确认 `risk`、`profile`、`destructive` 元数据正确。
 6. 更新 `source/tools/index.ts` 中的 `EXPECTED_TOOL_COUNT`。

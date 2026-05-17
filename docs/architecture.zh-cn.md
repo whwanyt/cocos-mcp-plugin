@@ -158,7 +158,8 @@ paths()
 
 - 接收显式注册的 `ToolModule`。
 - 保存完整工具 catalog，并按当前 profile 生成 MCP 可暴露的 tools list。
-- 校验工具名唯一、schema 可序列化、handler 完整。
+- 校验工具名唯一、schema 可序列化、隐藏 Zod validator、handler 完整。
+- 在执行 handler 前统一校验工具参数。
 - 根据 `tools/call` 执行 handler。
 
 规范：
@@ -256,7 +257,7 @@ export function createSceneTools(): ToolModule {
 - 不完整工具必须标记 `partial` 或 `unavailable`。
 - 不允许用空对象伪装成功。
 - handler 返回 `ToolResponse`，成功用 `ok(...)`。
-- schema 必须是 JSON object schema。
+- 工具 schema 必须通过 toolkit helper 声明，对 MCP 输出 JSON Schema，同时由 registry 使用 Zod 校验。
 - 工具名保持 snake_case，namespace 使用既有目录名。
 - 节点和 prefab transform 必须使用 `transform-utils.ts` 统一规范化。
 - 2D 节点 position 允许 `{ x, y }`，写入 Cocos `cc.Node.position` 前必须自动补 `z: 0`。
@@ -404,7 +405,7 @@ Profile：
 
 1. 打开对应文件：`source/tools/scene-tools.ts`。
 2. 在 `createToolModule('scene', [...])` 的数组中添加 spec。
-3. 写清楚 `name`、`description`、`inputSchema`、`handler`。
+3. 写清楚 `name`、`description`、用 toolkit helper 声明的 `inputSchema`、`handler`。
 4. handler 只通过 `context.editor` 调用 Cocos。
 5. 更新 `EXPECTED_TOOL_COUNT`。
 6. Cocos 类型包或能力目录变化时运行 `npm run generate:capabilities`。

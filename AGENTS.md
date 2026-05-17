@@ -50,7 +50,7 @@ When adding a tool:
 
 1. Add the tool spec in the corresponding `source/tools/*-tools.ts` file.
 2. Use snake_case for the local tool name; the exposed name is `namespace_toolName`.
-3. Keep the schema as a JSON object schema.
+3. Declare the schema with toolkit helpers so it stays MCP-compatible JSON Schema and gets hidden Zod validation.
 4. Call Cocos capabilities only through `context.editor`.
 5. Update `EXPECTED_TOOL_COUNT` in `source/tools/index.ts`.
 6. Confirm that `risk`, `profile`, and `destructive` metadata are correct. If omitted, `toolkit` will infer defaults.

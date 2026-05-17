@@ -5,6 +5,7 @@ import {
   HttpStreamableTransport,
   McpRequestRouter,
   SessionManager,
+  TOOL_INPUT_VALIDATOR,
   ToolRegistry,
 } from '../core';
 import { registerAllTools, EXPECTED_TOOL_COUNT } from '../tools';
@@ -160,6 +161,11 @@ async function main(): Promise<void> {
   for (const tool of registry.list()) {
     assert.doesNotThrow(() => JSON.stringify(tool.inputSchema), `${tool.name} schema is serializable`);
   }
+  assert.ok(
+    registry.list().some((tool) => Object.getOwnPropertySymbols(tool.inputSchema).includes(TOOL_INPUT_VALIDATOR)),
+    'tool schemas carry hidden Zod validators',
+  );
+  assert.ok(!JSON.stringify(registry.listForMcp()).includes('toolInputValidator'), 'hidden validators are not exposed to MCP clients');
 
   const defaultExposed = registry.listForMcp();
   assert.ok(defaultExposed.length < EXPECTED_TOOL_COUNT, 'default core profile exposes subset');
@@ -320,6 +326,19 @@ async function main(): Promise<void> {
   }));
   assert.strictEqual(aligned.result.isError, false);
   assert.ok(bridge.requests.some((request) => request.channel === 'scene' && request.message === 'align-view-with-node'));
+
+  const validationError = parseToolCall(await router.route({
+    jsonrpc: '2.0',
+    id: 21,
+    method: 'tools/call',
+    params: {
+      name: 'sceneView_set_icon_gizmo_size',
+      arguments: { size: 'large' },
+    } as JsonObject,
+  }));
+  assert.strictEqual(validationError.result.isError, true);
+  assert.ok(JSON.stringify(validationError.body).includes('Tool arguments validation failed'));
+  assert.ok(JSON.stringify(validationError.body).includes('size'));
 
   registry.setExposureConfig({ profile: 'full', allowDangerous: false });
 
