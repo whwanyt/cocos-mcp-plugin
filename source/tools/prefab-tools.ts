@@ -1,5 +1,6 @@
-import { EditorAssetInfo, ToolModule } from '../types';
-import { anyProp, createToolModule, objectSchema, ok, stringProp } from './toolkit';
+import { EditorAssetInfo, EditorNodeDump, JsonObject, ToolModule } from '../types';
+import { createToolModule, objectSchema, ok, stringProp } from './toolkit';
+import { normalizeTransformArgs, transformSchema } from './transform-utils';
 
 // EN: Prefab tools are full-profile because prefab mutation can affect many scene instances.
 // ZH: prefab 工具默认属于 full profile，因为 prefab 修改可能影响多个场景实例。
@@ -32,7 +33,7 @@ export function createPrefabTools(): ToolModule {
       inputSchema: objectSchema({
         prefabPath: stringProp('Prefab asset path'),
         parentUuid: stringProp('Parent node UUID'),
-        position: anyProp('Initial position'),
+        position: transformSchema().position as JsonObject,
       }, ['prefabPath']),
       handler: async (args, context) => {
         const assetInfo = await context.editor.request('asset-db', 'query-asset-info', args.prefabPath) as EditorAssetInfo | null;
@@ -44,7 +45,23 @@ export function createPrefabTools(): ToolModule {
           parent: args.parentUuid,
           name: assetInfo.name,
         });
-        return ok({ uuid, prefab: assetInfo, position: args.position }, 'Prefab instantiate requested');
+        let normalizedPosition: unknown;
+        if (args.position && uuid) {
+          const node = await context.editor.request('scene', 'query-node', String(uuid)) as EditorNodeDump | null;
+          let transform: ReturnType<typeof normalizeTransformArgs>;
+          try {
+            transform = normalizeTransformArgs({ position: args.position }, node);
+          } catch (error) {
+            return { success: false, error: error instanceof Error ? error.message : String(error), data: { uuid } };
+          }
+          normalizedPosition = transform.position;
+          await context.editor.request('scene', 'set-property', {
+            uuid,
+            path: 'position',
+            dump: { value: transform.position },
+          });
+        }
+        return ok({ uuid, prefab: assetInfo, position: normalizedPosition }, 'Prefab instantiate requested');
       },
     },
     {
@@ -68,7 +85,7 @@ export function createPrefabTools(): ToolModule {
       name: 'revert_prefab',
       description: 'Revert prefab instance to original',
       inputSchema: objectSchema({ nodeUuid: stringProp('Prefab instance node UUID') }, ['nodeUuid']),
-      handler: async (args, context) => ok(await context.editor.request('scene', 'revert-prefab', { uuid: args.nodeUuid })),
+      handler: async (args, context) => ok(await context.editor.request('scene', 'restore-prefab', { uuid: args.nodeUuid })),
     },
     {
       name: 'get_prefab_info',

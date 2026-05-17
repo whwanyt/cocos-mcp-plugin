@@ -1,5 +1,6 @@
 import { JsonObject, ToolCatalogEntry, ToolModule } from '../types';
 import { arrayProp, createToolModule, objectSchema, ok, stringProp } from './toolkit';
+import { findMessageCapability, getMessageCapabilities, isDangerousMessage, toJsonObject, validateMessageArguments } from './capability-catalog';
 
 // EN: Editor tools expose cross-cutting editor state that does not belong to a scene/node/project domain.
 // ZH: editor 工具暴露不属于 scene/node/project 单一领域的编辑器横向状态。
@@ -40,6 +41,58 @@ export function createEditorTools(): ToolModule {
         }
         const { catalog: _catalog, ...summary } = context.exposure;
         return ok(summary);
+      },
+    },
+    {
+      name: 'get_message_catalog',
+      description: 'Get typed Editor.Message capability catalog extracted from Cocos creator types',
+      inputSchema: objectSchema({
+        channel: stringProp('Optional Editor.Message channel filter'),
+        risk: stringProp('Optional risk filter', { enum: ['safe', 'write', 'destructive', 'exec', 'environment', 'internal'] }),
+        source: stringProp('Optional source filter', { enum: ['typed', 'package-specific'] }),
+      }),
+      handler: async (args) => ok({
+        total: getMessageCapabilities().filter((item) => item.source === 'typed').length,
+        catalog: getMessageCapabilities()
+          .filter((item) => typeof args.channel !== 'string' || item.channel === args.channel)
+          .filter((item) => typeof args.risk !== 'string' || item.risk === args.risk)
+          .filter((item) => typeof args.source !== 'string' || item.source === args.source)
+          .map(toJsonObject),
+      }),
+    },
+    {
+      name: 'call_message',
+      description: 'Call a validated Editor.Message channel and method',
+      inputSchema: objectSchema({
+        channel: stringProp('Editor.Message channel'),
+        message: stringProp('Editor.Message method'),
+        args: arrayProp('Message arguments', {}),
+      }, ['channel', 'message']),
+      risk: 'write',
+      profile: 'full',
+      handler: async (args, context) => {
+        const channel = String(args.channel);
+        const messageName = String(args.message);
+        const capability = findMessageCapability(channel, messageName);
+        if (!capability) {
+          return { success: false, error: `Unknown Editor.Message capability: ${channel}:${messageName}` };
+        }
+        if (isDangerousMessage(capability) && context.exposure?.config.allowDangerous !== true) {
+          return {
+            success: false,
+            error: 'Editor.Message capability requires Dangerous Tools opt-in',
+            data: toJsonObject(capability),
+          };
+        }
+        const messageArgs = Array.isArray(args.args) ? args.args : [];
+        const validationError = validateMessageArguments(capability, messageArgs);
+        if (validationError) {
+          return { success: false, error: validationError, data: toJsonObject(capability) };
+        }
+        return ok({
+          capability: toJsonObject(capability),
+          result: await context.editor.request(channel, messageName, ...messageArgs),
+        });
       },
     },
   ]);

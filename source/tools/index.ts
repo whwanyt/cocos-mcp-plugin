@@ -18,7 +18,7 @@ import { createValidationTools } from './validation-tools';
 
 // EN: Expected count tracks the full current catalog and fails startup if registration drifts.
 // ZH: expected 数量跟踪当前完整工具目录，注册结果漂移时会阻止启动。
-export const EXPECTED_TOOL_COUNT = 166;
+export const EXPECTED_TOOL_COUNT = 173;
 
 export function registerAllTools(registry: ToolRegistry, logger: Logger): void {
   // EN: Explicit registration keeps startup deterministic and makes missing modules visible in review.

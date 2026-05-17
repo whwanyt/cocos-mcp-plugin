@@ -54,8 +54,9 @@ When adding a tool:
 4. Call Cocos capabilities only through `context.editor`.
 5. Update `EXPECTED_TOOL_COUNT` in `source/tools/index.ts`.
 6. Confirm that `risk`, `profile`, and `destructive` metadata are correct. If omitted, `toolkit` will infer defaults.
-7. Add or update tests.
-8. Run `npm run build` and `npm test`.
+7. Run `npm run generate:capabilities` when Cocos type packages or capability catalogs change.
+8. Add or update tests.
+9. Run `npm run build` and `npm test`.
 
 Tool status rules:
 
@@ -73,6 +74,12 @@ Tool exposure rules:
 - Internal `validation` tools should not appear in the default MCP exposure surface.
 - Script execution, delete operations, batch delete operations, preference reset, and environment-changing tools must be marked dangerous or full-profile.
 - Calls to profile-disabled tools must return a structured error instead of pretending the tool is unknown.
+
+Raw control rules:
+
+- `editor_call_message` must validate channel, message, argument count, basic argument shape, and dangerous-message policy before calling `Editor.Message`.
+- `scene_call_runtime` must expose only discoverable runtime catalog entries and must validate supported raw calls before entering scene context.
+- Cocos typed catalog changes should be reflected by `scripts/extract-cocos-capabilities.js` and `generated/cocos-capabilities.json`.
 
 ## EditorBridge Rules
 
@@ -137,6 +144,7 @@ Common commands:
 
 ```bash
 npm run build
+npm run generate:capabilities
 npm test
 ```
 
@@ -153,7 +161,8 @@ Minimum verification requirements:
 ## Current Facts
 
 - Current MCP protocol version: `2025-06-18`.
-- Current tool total: `166`.
+- Current tool total: `173`.
+- Current typed editor message count: `97`.
 - Default service URL: `http://127.0.0.1:3000/mcp`.
 - Cocos extension entry: `dist/main.js`.
 - Cocos scene contribution: `dist/scene.js`.

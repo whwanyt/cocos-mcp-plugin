@@ -23,7 +23,7 @@ export function createSceneViewTools(): ToolModule {
     tool('query_icon_gizmo_size', 'Query IconGizmo size', {}, [], 'query-icon-gizmo-size'),
     tool('focus_camera_on_nodes', 'Focus scene camera on nodes', { uuids: anyProp('Node UUIDs to focus on') }, ['uuids'], 'focus-camera', (args) => [args.uuids ?? []]),
     tool('align_camera_with_view', 'Apply scene camera position and angle to selected node', {}, [], 'align-with-view'),
-    tool('align_view_with_node', 'Apply selected node position and angle to current view', {}, [], 'align-with-view-node'),
+    tool('align_view_with_node', 'Apply selected node position and angle to current view', {}, [], 'align-view-with-node'),
     {
       name: 'get_scene_view_status',
       description: 'Get comprehensive scene view status',

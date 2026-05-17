@@ -1,5 +1,6 @@
 import { EditorComponentDump, EditorNodeDump, JsonObject, ToolModule } from '../types';
 import { anyProp, arrayProp, booleanProp, createToolModule, numberProp, objectSchema, ok, stringProp } from './toolkit';
+import { applyTransformToOptions, is2DNodeDump, normalizeTransformArgs, transformSchema } from './transform-utils';
 
 // EN: Node tools keep scene graph operations behind EditorBridge so handlers remain testable without Cocos.
 // ZH: 节点工具把场景树操作封装在 EditorBridge 后面，使 handler 在无 Cocos 环境中也可测试。
@@ -18,10 +19,14 @@ export function createNodeTools(): ToolModule {
         components: arrayProp('Component type names'),
         unlinkPrefab: booleanProp('Unlink prefab after creation', { default: false }),
         keepWorldTransform: booleanProp('Keep world transform', { default: false }),
-        initialTransform: anyProp('Initial transform'),
+        initialTransform: {
+          type: 'object',
+          description: 'Initial transform object',
+          properties: transformSchema(),
+        },
       }, ['name']),
       handler: async (args, context) => {
-        const options = {
+        const options: Record<string, unknown> = {
           name: args.name,
           parent: args.parentUuid,
           assetUuid: args.assetUuid,
@@ -30,6 +35,15 @@ export function createNodeTools(): ToolModule {
           keepWorldTransform: args.keepWorldTransform ?? false,
         };
         const nodeUuid = await context.editor.request('scene', 'create-node', options);
+        if (args.initialTransform && nodeUuid) {
+          const node = await context.editor.request('scene', 'query-node', String(nodeUuid)) as EditorNodeDump | null;
+          const transform = normalizeTransformOrError(args.initialTransform as JsonObject, node);
+          if (typeof transform === 'string') {
+            return { success: false, error: transform };
+          }
+          await applyNodeTransform(String(nodeUuid), transform, context);
+          return ok({ uuid: nodeUuid, options, initialTransform: transform }, 'Node created successfully');
+        }
         return ok({ uuid: nodeUuid, options }, 'Node created successfully');
       },
     },
@@ -164,20 +178,16 @@ export function createNodeTools(): ToolModule {
       description: 'Set node transform properties',
       inputSchema: objectSchema({
         uuid: stringProp('Node UUID'),
-        position: anyProp('Node position'),
-        rotation: anyProp('Node rotation'),
-        scale: anyProp('Node scale'),
+        ...transformSchema(),
       }, ['uuid']),
       handler: async (args, context) => {
-        const updates = ['position', 'rotation', 'scale'].filter((key) => args[key] !== undefined);
-        for (const key of updates) {
-          await context.editor.request('scene', 'set-property', {
-            uuid: args.uuid,
-            path: key,
-            dump: { value: args[key] },
-          });
+        const node = await context.editor.request('scene', 'query-node', String(args.uuid)) as EditorNodeDump | null;
+        const transform = normalizeTransformOrError(args, node);
+        if (typeof transform === 'string') {
+          return { success: false, error: transform, data: { uuid: args.uuid } };
         }
-        return ok({ uuid: args.uuid, updated: updates }, 'Node transform updated');
+        await applyNodeTransform(String(args.uuid), transform, context);
+        return ok({ uuid: args.uuid, transform }, 'Node transform updated');
       },
     },
     {
@@ -225,11 +235,33 @@ export function createNodeTools(): ToolModule {
         const componentTypes = components
           .map((component: EditorComponentDump) => component.type ?? component.value?.type)
           .filter((type): type is string => typeof type === 'string');
-        const is2D = componentTypes.some((type) => ['cc.UITransform', 'cc.Sprite', 'cc.Label', 'cc.Button'].includes(type));
+        const is2D = is2DNodeDump(node);
         return ok({ uuid: args.uuid, nodeType: is2D ? '2DNode' : '3DNode', componentTypes });
       },
     },
   ]);
+}
+
+function normalizeTransformOrError(args: JsonObject, node: EditorNodeDump | null | undefined): ReturnType<typeof normalizeTransformArgs> | string {
+  try {
+    return normalizeTransformArgs(args, node);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+async function applyNodeTransform(uuid: string, transform: ReturnType<typeof normalizeTransformArgs>, context: { editor: { request(channel: string, message: string, ...args: unknown[]): Promise<unknown> } }): Promise<void> {
+  const options: Record<string, unknown> = {};
+  applyTransformToOptions(options, transform);
+  for (const key of ['position', 'rotation', 'scale']) {
+    if (options[key] !== undefined) {
+      await context.editor.request('scene', 'set-property', {
+        uuid,
+        path: key,
+        dump: { value: options[key] },
+      });
+    }
+  }
 }
 
 function walkTree(node: JsonObject | undefined, visitor: (node: JsonObject) => void): void {

@@ -70,7 +70,7 @@ export function createSceneAdvancedTools(): ToolModule {
       name: 'restore_prefab',
       description: 'Restore prefab instance from asset',
       inputSchema: objectSchema({ nodeUuid: stringProp('Node UUID'), assetUuid: stringProp('Prefab asset UUID') }, ['nodeUuid', 'assetUuid']),
-      handler: async (args, context) => ok(await context.editor.request('scene', 'restore-prefab', args.nodeUuid, args.assetUuid)),
+      handler: async (args, context) => ok(await context.editor.request('scene', 'restore-prefab', { uuid: args.nodeUuid, assetUuid: args.assetUuid })),
     },
     {
       name: 'execute_component_method',

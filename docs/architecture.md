@@ -10,7 +10,7 @@ The architecture favors clear layering, strong types, and transport extensibilit
 
 Core goals:
 
-- Provide `166` stable MCP tools.
+- Provide `173` stable MCP tools plus typed raw bridges for full Cocos control.
 - Separate MCP protocol, HTTP transport, tool registration, editor access, and tool business logic.
 - Run inside Cocos Creator by default while keeping the core testable and portable.
 - Expose incomplete capabilities honestly with `partial` or `unavailable` status.
@@ -71,9 +71,15 @@ source/
   tools/
     index.ts                    # explicit tool module registration
     toolkit.ts                  # tool declaration helpers
+    capability-catalog.ts       # typed Editor.Message and engine runtime capability catalog
+    transform-utils.ts          # 2D/3D transform normalization
     *-tools.ts                  # domain tool modules
   test/
     run-tests.ts
+scripts/
+  extract-cocos-capabilities.js # local @cocos/creator-types catalog extractor
+generated/
+  cocos-capabilities.json       # generated capability summary
 static/
   template/default/index.html
   style/default/index.css
@@ -256,6 +262,17 @@ Rules:
 - Handlers return `ToolResponse`; use `ok(...)` for success.
 - Schemas must be JSON object schemas.
 - Tool names use snake_case.
+- Use `transform-utils.ts` for node and prefab transform normalization.
+- 2D node positions may accept `{ x, y }`; tools must add `z: 0` before writing Cocos `cc.Node.position`.
+- Use generic component property access for UITransform content size instead of adding a dedicated content-size tool.
+
+Raw bridge tools:
+
+- `editor_get_message_catalog`: reports typed and package-specific `Editor.Message` capabilities.
+- `editor_call_message`: validates channel, message, argument count, basic argument shape, and dangerous-message policy before calling `Editor.Message`.
+- `scene_get_runtime_catalog`: reports runtime capabilities extracted from `@cocos/creator-types/engine`.
+- `scene_call_runtime`: calls supported runtime entries through `source/scene.ts` after validation.
+- `scene_get_component_property` and `scene_set_component_property`: generic component property access through stable component dump paths.
 
 ### 4.7 scene contribution
 
@@ -271,6 +288,7 @@ Current methods:
 - `getCurrentSceneInfo`
 - `getSceneHierarchy`
 - `executeScript`
+- `callRuntime`
 
 Rules:
 
@@ -371,6 +389,8 @@ Risk levels:
 
 Dangerous tools are disabled unless `allowDangerous` is true. Dangerous means `destructive`, `exec`, `environment`, or explicitly destructive metadata.
 
+Raw bridges live in the `full` profile. Per-call risk still applies: dangerous `Editor.Message` methods or dangerous runtime entries require `allowDangerous=true`.
+
 ## 7. Configuration And Lifecycle
 
 The main process owns runtime assembly:
@@ -393,7 +413,8 @@ When adding a tool:
 4. Call Cocos through `context.editor`.
 5. Confirm `status`, `risk`, `profile`, and `destructive`.
 6. Update `EXPECTED_TOOL_COUNT`.
-7. Update tests.
+7. Run `npm run generate:capabilities` when Cocos type packages or capability catalogs change.
+8. Update tests.
 
 If a tool needs new editor access:
 
@@ -439,6 +460,7 @@ Commands:
 
 ```bash
 npm run build
+npm run generate:capabilities
 npm test
 ```
 
@@ -452,12 +474,19 @@ Coverage expectations:
 - Disabled tools return structured errors.
 - `tool_get_catalog` exposes the complete catalog.
 - HTTP transport validates session, SSE, and DELETE behavior.
+- 2D node transform adapts `{ x, y }` to `{ x, y, z: 0 }`.
+- Raw bridge tools reject unknown methods and invalid argument shapes.
 
 `npm test` starts a local HTTP server on `127.0.0.1:39876`; some environments require permission for local port binding.
 
 ## 12. Current Implementation Status
 
-The full catalog registers `166` tools and validates that count at startup.
+The full catalog registers `173` tools and validates that count at startup.
+
+The local Cocos type catalog currently reports:
+
+- `97` typed editor messages from `@cocos/creator-types/editor`.
+- Runtime catalog entries are extracted from `@cocos/creator-types/engine` and merged with the supported scene runtime calls.
 
 Implemented priority areas:
 
@@ -467,7 +496,8 @@ Implemented priority areas:
 - Project info, asset query/create/copy/move/delete/save/reimport/search.
 - Server information and network interface queries.
 - Scene view status and common controls.
-- Editor selection, capability summary, and full tool catalog.
+- Editor selection, capability summary, typed message catalog, raw message bridge, runtime catalog, runtime bridge, and full tool catalog.
+- 2D/3D transform normalization for node transforms, node creation, and prefab instantiation.
 
 Areas that still need deeper implementation:
 

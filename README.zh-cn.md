@@ -10,7 +10,7 @@
 ![MCP](https://img.shields.io/badge/MCP-2025--06--18-7C3AED?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Transport](https://img.shields.io/badge/Transport-Streamable%20HTTP-16A34A?style=for-the-badge)
-![Tools](https://img.shields.io/badge/Tools-166-F97316?style=for-the-badge)
+![Tools](https://img.shields.io/badge/Tools-173-F97316?style=for-the-badge)
 
 </div>
 
@@ -36,7 +36,8 @@
 | 协议版本 | `2025-06-18` |
 | 默认端点 | `http://127.0.0.1:3000/mcp` |
 | 默认 profile | `core` |
-| 完整工具目录 | `166` 个工具 |
+| 完整工具目录 | `173` 个工具 |
+| Typed editor messages | 本地 `@cocos/creator-types/editor` 提供 `97` 个 |
 | 面板菜单 | `Extension / Cocos Mcp Plugin / Open Panel` |
 
 ## 🧰 工具领域
@@ -50,7 +51,8 @@
 | `sceneView` | 视图状态、gizmo、网格、相机聚焦 |
 | `debug` | 编辑器信息、日志、性能、场景校验 |
 | `server` | 本地服务状态和网络信息 |
-| `editor` | 编辑器选择集与能力摘要 |
+| `editor` | 编辑器选择集、能力摘要、typed `Editor.Message` raw bridge |
+| `scene` raw bridge | 基于类型目录的 scene runtime 调用与通用组件 get/set |
 | `tool` | 完整工具目录查询 |
 
 ## 🚀 快速开始
@@ -111,6 +113,10 @@ MCP-Protocol-Version: 2025-06-18
 | --- | --- |
 | `tool_get_catalog` | 查看完整工具目录，包括被禁用工具和禁用原因。 |
 | `editor_get_capabilities` | 查看当前 profile、暴露数量、危险工具数量和 partial 数量。 |
+| `editor_get_message_catalog` | 查看 typed 与 package-specific 的 `Editor.Message` 能力。 |
+| `editor_call_message` | 在 `full` profile 中调用通过校验的 typed `Editor.Message`。 |
+| `scene_get_runtime_catalog` | 查看从 Cocos engine 类型提取的 runtime 能力。 |
+| `scene_call_runtime` | 通过 scene contribution 调用受支持的 scene runtime 能力。 |
 
 ## 🛡️ Profile 与风险控制
 
@@ -181,8 +187,9 @@ source/scene.ts
 4. handler 只通过 `context.editor` 调用 Cocos 能力。
 5. 确认 `risk`、`profile`、`destructive` 元数据正确。
 6. 更新 `source/tools/index.ts` 中的 `EXPECTED_TOOL_COUNT`。
-7. 添加或更新测试。
-8. 运行 `npm run build` 和 `npm test`。
+7. 如果 Cocos 类型目录发生变化，运行 `npm run generate:capabilities`。
+8. 添加或更新测试。
+9. 运行 `npm run build` 和 `npm test`。
 
 如果工具能力还不完整，必须标记为 `partial` 或 `unavailable`，不能返回假成功。
 
@@ -191,6 +198,7 @@ source/scene.ts
 | 命令 | 说明 |
 | --- | --- |
 | `npm run build` | 构建 Cocos 扩展产物。 |
+| `npm run generate:capabilities` | 从本地 Cocos 类型包重新生成 `generated/cocos-capabilities.json`。 |
 | `npm run watch` | 开发时持续构建。 |
 | `npm test` | 运行 registry、protocol、transport 和 bridge 测试。 |
 

@@ -1,5 +1,6 @@
 import { EditorAssetInfo, EditorComponentDump, EditorNodeDump, ToolModule } from '../types';
 import { anyProp, createToolModule, objectSchema, ok, stringProp } from './toolkit';
+import { findComponent, readPath, resolveComponentPropertyTarget } from './component-property-utils';
 
 // EN: Component tools operate on editor node dumps and avoid importing Cocos runtime component classes.
 // ZH: 组件工具基于编辑器节点 dump 操作，避免导入 Cocos runtime 组件类。
@@ -90,12 +91,35 @@ export function createComponentTools(): ToolModule {
         value: anyProp('Property value'),
       }, ['nodeUuid', 'componentType', 'property', 'propertyType', 'value']),
       handler: async (args, context) => {
+        const node = await context.editor.request('scene', 'query-node', String(args.nodeUuid)) as EditorNodeDump | null;
+        const target = resolveComponentPropertyTarget(node, String(args.componentType));
+        if (!target) {
+          return { success: false, error: `Component not found: ${args.componentType}` };
+        }
         await context.editor.request('scene', 'set-property', {
           uuid: args.nodeUuid,
-          path: `__comps__.${args.componentType}.${args.property}`,
+          path: `${target.componentPath}.${args.property}`,
           dump: { type: args.propertyType, value: args.value },
         });
-        return ok({ nodeUuid: args.nodeUuid, componentType: args.componentType, property: args.property }, 'Component property update requested');
+        return ok({ nodeUuid: args.nodeUuid, componentType: args.componentType, componentPath: target.componentPath, property: args.property }, 'Component property update requested');
+      },
+    },
+    {
+      name: 'get_component_property',
+      description: 'Get a component property value from node dump',
+      inputSchema: objectSchema({
+        nodeUuid: stringProp('Target node UUID'),
+        componentType: stringProp('Component type'),
+        property: stringProp('Property name'),
+      }, ['nodeUuid', 'componentType', 'property']),
+      handler: async (args, context) => {
+        const node = await context.editor.request('scene', 'query-node', String(args.nodeUuid)) as EditorNodeDump | null;
+        const component = findComponent(node, String(args.componentType));
+        if (!component) {
+          return { success: false, error: `Component not found: ${args.componentType}` };
+        }
+        const value = readPath(component.value ?? component, String(args.property));
+        return ok({ nodeUuid: args.nodeUuid, componentType: args.componentType, property: args.property, value });
       },
     },
     {

@@ -10,7 +10,7 @@
 
 核心目标：
 
-- 提供稳定命名的 166 个 MCP tools。
+- 提供稳定命名的 173 个 MCP tools，并通过 typed raw bridge 覆盖完整 Cocos 控制能力。
 - 将 MCP 协议、HTTP transport、工具注册、编辑器访问、工具业务拆开。
 - 默认运行在 Cocos 插件内，但 core 保持可测试、可迁移、可扩展。
 - 首期复杂工具允许 `partial`，但必须显式暴露状态，禁止假成功。
@@ -73,9 +73,15 @@ source/
   tools/
     index.ts                    # 显式注册所有工具模块，并校验工具总数
     toolkit.ts                  # 工具声明辅助函数
+    capability-catalog.ts       # typed Editor.Message 与 engine runtime 能力目录
+    transform-utils.ts          # 2D/3D transform 参数规范化
     *-tools.ts                  # 按领域拆分的 ToolModule
   test/
     run-tests.ts                # 无 Cocos 依赖的 core/协议/HTTP 测试
+scripts/
+  extract-cocos-capabilities.js # 本地 @cocos/creator-types 能力目录提取脚本
+generated/
+  cocos-capabilities.json       # 生成的能力摘要
 static/
   template/default/index.html   # 默认面板模板
   style/default/index.css       # 默认面板样式
@@ -252,6 +258,17 @@ export function createSceneTools(): ToolModule {
 - handler 返回 `ToolResponse`，成功用 `ok(...)`。
 - schema 必须是 JSON object schema。
 - 工具名保持 snake_case，namespace 使用既有目录名。
+- 节点和 prefab transform 必须使用 `transform-utils.ts` 统一规范化。
+- 2D 节点 position 允许 `{ x, y }`，写入 Cocos `cc.Node.position` 前必须自动补 `z: 0`。
+- UITransform 尺寸通过通用组件属性工具处理，不新增独立 content size 工具。
+
+Raw bridge 工具：
+
+- `editor_get_message_catalog`：返回 typed 与 package-specific 的 `Editor.Message` 能力。
+- `editor_call_message`：调用 `Editor.Message` 前校验 channel、message、参数数量、基础参数形态和危险能力策略。
+- `scene_get_runtime_catalog`：返回从 `@cocos/creator-types/engine` 提取的 runtime 能力。
+- `scene_call_runtime`：通过 `source/scene.ts` 调用已支持且通过校验的 runtime 条目。
+- `scene_get_component_property` 和 `scene_set_component_property`：基于稳定 component dump path 的通用组件属性访问入口。
 
 ### 4.7 scene contribution 层
 
@@ -267,6 +284,7 @@ export function createSceneTools(): ToolModule {
 - `getCurrentSceneInfo`
 - `getSceneHierarchy`
 - `executeScript`
+- `callRuntime`
 
 规范：
 
@@ -350,11 +368,37 @@ scene.ts -> MCP router / HTTP server
 - HTTP 服务默认只绑定 `127.0.0.1`。
 - Origin 默认只允许本地来源。
 - 支持 `authToken` 配置，但默认不开启。
-- `debug_execute_script` 和 `scene_execute_scene_script` 是高权限能力，后续如加 UI 配置，应默认可关闭。
+- `debug_execute_script` 和 `sceneAdvanced_execute_scene_script` 是高权限能力，应默认关闭。
 
-## 6. 如何扩展工具层
+## 6. 工具暴露模型
 
-### 6.1 在已有 namespace 下新增工具
+Registry 和 MCP 暴露面是分离的：
+
+- registry 始终保留完整 catalog。
+- `tools/list` 只返回当前已暴露工具。
+- `tool_get_catalog` 返回完整 catalog、启用状态和禁用原因。
+- `editor_get_capabilities` 返回当前 profile 和工具数量。
+
+Profile：
+
+- `core`：默认 profile，暴露稳定高频工具。
+- `full`：用于更完整控制面的 profile。
+- `internal`：不通过默认 MCP `tools/list` 暴露。
+
+风险等级：
+
+- `safe`
+- `write`
+- `destructive`
+- `exec`
+- `environment`
+- `internal`
+
+危险工具只有 `allowDangerous=true` 时才暴露。危险能力包括 `destructive`、`exec`、`environment`，以及显式标记 destructive 的工具。Raw bridge 位于 `full` profile，但每次调用仍按具体 capability 的风险判断：危险 `Editor.Message` 或危险 runtime 条目仍需要开启 Dangerous Tools。
+
+## 7. 如何扩展工具层
+
+### 7.1 在已有 namespace 下新增工具
 
 以新增 `scene_query_dirty_reason` 为例：
 
@@ -363,11 +407,13 @@ scene.ts -> MCP router / HTTP server
 3. 写清楚 `name`、`description`、`inputSchema`、`handler`。
 4. handler 只通过 `context.editor` 调用 Cocos。
 5. 更新 `EXPECTED_TOOL_COUNT`。
-6. 在 `source/test/run-tests.ts` 补充必要测试。
-7. 运行：
+6. Cocos 类型包或能力目录变化时运行 `npm run generate:capabilities`。
+7. 在 `source/test/run-tests.ts` 补充必要测试。
+8. 运行：
 
 ```bash
 npm run build
+npm run generate:capabilities
 npm test
 ```
 
@@ -386,7 +432,7 @@ npm test
 }
 ```
 
-### 6.2 新增 namespace
+### 7.2 新增 namespace
 
 1. 新建 `source/tools/new-domain-tools.ts`。
 2. 导出 `createNewDomainTools(): ToolModule`。
@@ -399,7 +445,7 @@ npm test
 - namespace 会成为工具名前缀。
 - 一旦对外发布，工具名不要随意改。
 
-### 6.3 将 partial 工具补成 implemented
+### 7.3 将 partial 工具补成 implemented
 
 1. 找到工具 spec。
 2. 补真实 handler。
@@ -407,7 +453,7 @@ npm test
 4. 增加 fake bridge 测试，验证调用的 channel/message/args。
 5. 如果涉及 Cocos 真实环境，再补手工验收步骤。
 
-## 7. 如何扩展 EditorBridge
+## 8. 如何扩展 EditorBridge
 
 当工具需要新的编辑器访问能力时：
 
@@ -422,7 +468,7 @@ npm test
 - 单个工具专用的简单消息仍可直接用 `request(channel, message, ...args)`。
 - 如果某个能力需要复杂参数规范化，可以封装为 bridge 方法。
 
-## 8. 如何扩展 MCP 协议层
+## 9. 如何扩展 MCP 协议层
 
 新增 MCP method 时：
 
@@ -440,7 +486,7 @@ npm test
 
 当前不建议提前实现这些能力，除非产品上明确需要。
 
-## 9. 如何扩展 transport 层
+## 10. 如何扩展 transport 层
 
 新增 transport 时：
 
@@ -469,12 +515,13 @@ StdioTransportAdapter
   -> write JsonRpcResponse to stdout
 ```
 
-## 10. 测试规范
+## 11. 测试规范
 
 当前测试命令：
 
 ```bash
 npm run build
+npm run generate:capabilities
 npm test
 ```
 
@@ -488,6 +535,8 @@ npm test
 - `tools/call` 能调用 fake bridge。
 - notification 返回 accepted。
 - HTTP transport 验证 session、SSE、DELETE。
+- 2D 节点 transform 会将 `{ x, y }` 适配为 `{ x, y, z: 0 }`。
+- raw bridge 工具会拒绝未知 method 和非法参数形态。
 
 新增工具或暴露规则时至少补一种测试：
 
@@ -497,9 +546,14 @@ npm test
 - 新 transport：验证 start/stop 和请求路由。
 - 新协议 method：验证 JSON-RPC response。
 
-## 11. 当前工具实现状态
+## 12. 当前工具实现状态
 
-已完整注册 166 个工具，启动时强校验。新增工具提供 editor selection、capabilities、完整 catalog 和高频资源/节点/组件查询能力。
+已完整注册 173 个工具，启动时强校验。
+
+当前本地 Cocos 类型目录显示：
+
+- `@cocos/creator-types/editor` 提供 `97` 个 typed editor messages。
+- runtime catalog 从 `@cocos/creator-types/engine` 提取，并与当前 scene runtime 已支持调用合并。
 
 工具暴露策略：
 
@@ -517,7 +571,8 @@ npm test
 - 组件增删查、脚本挂载请求、组件属性设置请求。
 - 项目信息、资源查询/创建/复制/移动/删除/保存/重导入。
 - 服务器信息、网络接口、连通性检查。
-- editor selection、工具 catalog 和 capabilities 查询。
+- editor selection、capabilities、typed message catalog、raw message bridge、runtime catalog、runtime bridge 和完整工具 catalog。
+- 节点 transform、节点创建、prefab 实例化的 2D/3D transform 规范化。
 - 多数 sceneAdvanced / sceneView / referenceImage 可直接映射的 Editor.Message 调用。
 
 仍需后续深化的方向：
@@ -530,7 +585,7 @@ npm test
 
 这些工具已经以 `partial` 状态进入完整 catalog，是否对 MCP 客户端暴露由 profile 和危险工具开关决定。
 
-## 12. 发布与集成注意事项
+## 13. 发布与集成注意事项
 
 - Cocos 插件运行使用 `dist/main.js` 和 `dist/scene.js`。
 - 修改源码后必须执行 `npm run build`。
@@ -544,7 +599,7 @@ http://127.0.0.1:3000/mcp
 
 - 首次请求必须调用 `initialize`，后续请求带 `Mcp-Session-Id`。
 
-## 13. 禁止事项
+## 14. 禁止事项
 
 - 禁止工具模块直接访问全局 `Editor`。
 - 禁止 transport 直接调用工具 handler。

@@ -90,7 +90,7 @@ export function createProjectTools(): ToolModule {
       description: 'Open the build panel in the editor',
       inputSchema: objectSchema(),
       handler: async (_args, context) => {
-        await context.editor.request('builder', 'open');
+        await context.editor.request('builder', 'open', 'default');
         return ok(undefined, 'Build panel opened');
       },
     },

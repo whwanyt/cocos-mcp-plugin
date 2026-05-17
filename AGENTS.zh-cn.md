@@ -54,8 +54,9 @@
 4. handler 只通过 `context.editor` 调用 Cocos 能力。
 5. 更新 `source/tools/index.ts` 中的 `EXPECTED_TOOL_COUNT`。
 6. 确认 `risk`、`profile`、`destructive` 元数据正确；没有显式配置时会由 `toolkit` 自动推断。
-7. 添加或更新测试。
-8. 运行 `npm run build` 和 `npm test`。
+7. Cocos 类型包或能力目录变化时运行 `npm run generate:capabilities`。
+8. 添加或更新测试。
+9. 运行 `npm run build` 和 `npm test`。
 
 工具状态规则：
 
@@ -73,6 +74,12 @@
 - `validation` 类内部工具不进入默认 MCP 暴露面。
 - 执行脚本、删除、批量删除、偏好重置、环境修改类工具必须标记为危险或 full profile。
 - 调用被 profile 禁用的工具时返回结构化错误，不能伪装成未知工具。
+
+Raw control 规则：
+
+- `editor_call_message` 调用 `Editor.Message` 前必须校验 channel、message、参数数量、基础参数形态和危险能力策略。
+- `scene_call_runtime` 只能暴露可发现的 runtime catalog 条目，并且受支持 raw call 必须先校验再进入 scene context。
+- Cocos typed catalog 变化时，应同步 `scripts/extract-cocos-capabilities.js` 与 `generated/cocos-capabilities.json`。
 
 ## EditorBridge 规则
 
@@ -137,6 +144,7 @@ context.editor.request('scene', 'query-node-tree')
 
 ```bash
 npm run build
+npm run generate:capabilities
 npm test
 ```
 
@@ -153,7 +161,8 @@ npm test
 ## 当前关键事实
 
 - 当前 MCP protocol version：`2025-06-18`。
-- 当前工具总数：`166`。
+- 当前工具总数：`173`。
+- 当前 typed editor message 数量：`97`。
 - 默认服务地址：`http://127.0.0.1:3000/mcp`。
 - Cocos 插件入口：`dist/main.js`。
 - Cocos scene contribution：`dist/scene.js`。

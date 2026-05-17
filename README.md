@@ -10,7 +10,7 @@
 ![MCP](https://img.shields.io/badge/MCP-2025--06--18-7C3AED?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Transport](https://img.shields.io/badge/Transport-Streamable%20HTTP-16A34A?style=for-the-badge)
-![Tools](https://img.shields.io/badge/Tools-166-F97316?style=for-the-badge)
+![Tools](https://img.shields.io/badge/Tools-173-F97316?style=for-the-badge)
 
 </div>
 
@@ -36,7 +36,8 @@ The project is designed as a compact, testable plugin kernel: protocol, transpor
 | Protocol version | `2025-06-18` |
 | Default endpoint | `http://127.0.0.1:3000/mcp` |
 | Default profile | `core` |
-| Full catalog | `166` tools |
+| Full catalog | `173` tools |
+| Typed editor messages | `97` from local `@cocos/creator-types/editor` |
 | Panel menu | `Extension / Cocos Mcp Plugin / Open Panel` |
 
 ## 🧰 Tool Areas
@@ -50,7 +51,8 @@ The project is designed as a compact, testable plugin kernel: protocol, transpor
 | `sceneView` | View state, gizmo, grid, camera focus |
 | `debug` | Editor info, logs, performance, scene validation |
 | `server` | Local service status and network information |
-| `editor` | Selection and capability summary |
+| `editor` | Selection, capability summary, typed `Editor.Message` raw bridge |
+| `scene` raw bridge | Type-catalog-backed scene runtime calls and generic component get/set |
 | `tool` | Complete catalog inspection |
 
 ## 🚀 Quick Start
@@ -111,6 +113,10 @@ Useful tools:
 | --- | --- |
 | `tool_get_catalog` | Inspect the full catalog, including disabled tools and reasons. |
 | `editor_get_capabilities` | Inspect active profile, exposure count, dangerous count, and partial count. |
+| `editor_get_message_catalog` | Inspect typed and package-specific `Editor.Message` capabilities. |
+| `editor_call_message` | Call validated typed `Editor.Message` methods in `full` profile. |
+| `scene_get_runtime_catalog` | Inspect runtime capabilities extracted from Cocos engine types. |
+| `scene_call_runtime` | Call supported scene runtime capabilities through the scene contribution. |
 
 ## 🛡️ Profiles And Risk Control
 
@@ -181,8 +187,9 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture guide
 4. Call Cocos only through `context.editor`.
 5. Confirm `risk`, `profile`, and `destructive` metadata.
 6. Update `EXPECTED_TOOL_COUNT` in `source/tools/index.ts`.
-7. Add or update tests.
-8. Run `npm run build` and `npm test`.
+7. Run `npm run generate:capabilities` if the Cocos type catalog changed.
+8. Add or update tests.
+9. Run `npm run build` and `npm test`.
 
 Incomplete tools must be marked as `partial` or `unavailable`; they must not return fake success.
 
@@ -191,6 +198,7 @@ Incomplete tools must be marked as `partial` or `unavailable`; they must not ret
 | Command | Description |
 | --- | --- |
 | `npm run build` | Build the Cocos extension output. |
+| `npm run generate:capabilities` | Regenerate `generated/cocos-capabilities.json` from local Cocos type packages. |
 | `npm run watch` | Rebuild while developing. |
 | `npm test` | Run registry, protocol, transport, and bridge tests. |
 
